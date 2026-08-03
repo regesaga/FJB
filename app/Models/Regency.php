@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Regency extends Model
+{
+    use HasFactory;
+
+    protected $primaryKey = 'code';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+
+    protected $fillable = [
+        'province_code',
+        'code',
+        'name',
+    ];
+
+
+    protected $casts = [
+        'province_code' => 'string',
+        'code' => 'string',
+    ];
+
+
+    public function province()
+    {
+        return $this->belongsTo(
+            Province::class,
+            'province_code',
+            'code'
+        );
+    }
+}
