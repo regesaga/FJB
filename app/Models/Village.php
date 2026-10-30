@@ -9,6 +9,12 @@ class Village extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'code';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     protected $fillable = [
         'district_code',
         'code',
@@ -19,16 +25,16 @@ class Village extends Model
     ];
 
     protected $casts = [
-        'district_code' => 'integer',
+        'district_code' => 'string',
         'code' => 'string',
     ];
 
     public function district()
-        {
-            return $this->belongsTo(
-                District::class,
-                'district_code',
-                'code'
-            );
-        }
+    {
+        return $this->belongsTo(
+            District::class,
+            'district_code',
+            'code'
+        );
+    }
 }

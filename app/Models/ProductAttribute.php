@@ -26,11 +26,13 @@ class ProductAttribute extends Model
         'sort',
     ];
 
-    public function options()
+public function options()
 {
-    return $this->hasMany(ProductAttributeOption::class);
+    return $this->hasMany(
+        \App\Models\ProductAttributeOption::class,
+        'product_attribute_id'
+    );
 }
-
 public function categoryAttributes()
 {
     return $this->hasMany(CategoryAttribute::class);
