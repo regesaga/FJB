@@ -15,25 +15,31 @@ class Regency extends Model
 
     protected $keyType = 'string';
 
-
     protected $fillable = [
         'province_code',
         'code',
         'name',
     ];
 
-
     protected $casts = [
         'province_code' => 'string',
         'code' => 'string',
     ];
-
 
     public function province()
     {
         return $this->belongsTo(
             Province::class,
             'province_code',
+            'code'
+        );
+    }
+
+    public function districts()
+    {
+        return $this->hasMany(
+            District::class,
+            'regency_code',
             'code'
         );
     }

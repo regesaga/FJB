@@ -1,0 +1,164 @@
+Sekarang konsep utama FJB sudah semakin jelas. Kita sudah menyepakati bahwa FJB bukan sekadar aplikasi jual beli, tetapi platform informasi barang dan jasa lokal berbasis lokasi dengan bantuan AI.
+
+Sebelum mulai coding lebih jauh, masih ada beberapa hal yang perlu diselesaikan agar tidak bolak-balik mengubah database dan aplikasi.
+1. Rekap konsep FJB yang sudah disepakati
+Fitur	Keputusan
+Iklan barang	✅ Ada
+Iklan jasa	✅ Ada
+Kategori dan subkategori	✅ Dikelola admin
+Jasa lainnya (input manual)	✅ Ada
+Pertanyaan dinamis	✅ Dikelola admin
+Pencarian lokasi	✅ Provinsi sampai desa
+Wilayah layanan jasa	✅ Bisa banyak desa
+Chat internal	✅ Ada
+WhatsApp	✅ Ada
+AI pembuat iklan	✅ Direncanakan
+Formulir interaktif seperti kuis	✅ Direncanakan
+Mode pengisian manual	✅ Ada
+Verifikasi pengguna	✅ Direncanakan
+Moderasi iklan	✅ Direncanakan
+
+
+2. Hal yang masih perlu dirancang
+Saya membaginya menjadi 8 kelompok.
+A. Sistem akun dan registrasi
+Perlu ditentukan:
+- Registrasi menggunakan nomor HP atau email.
+- Verifikasi OTP.
+- Profil perorangan dan pemilik usaha.
+- Verifikasi identitas.
+- Satu akun bisa menjual barang sekaligus menawarkan jasa.
+B. Sistem pemasangan iklan
+Kita sudah menyepakati tiga metode:
+1. Mode pilihan interaktif.
+2. Mode AI (cerita melalui teks atau suara).
+3. Mode manual.
+Perlu dibuat aturan validasi agar ketiganya menghasilkan data dengan struktur yang sama.
+C. Sistem pencarian lokal
+Ini salah satu keunggulan FJB.
+
+Pengguna dapat mencari:
+- Barang di desa tertentu.
+- Jasa yang tersedia di desa tertentu.
+- Penyedia jasa dari desa tetangga.
+- Barang berdasarkan kategori dan harga.
+- Jasa berdasarkan keahlian, harga, dan wilayah layanan.
+D. Sistem kepercayaan dan anti-fake
+Perlu dibuat:
+- Verifikasi nomor HP.
+- Verifikasi identitas.
+- Verifikasi toko atau usaha.
+- Laporan iklan palsu.
+- Moderasi administrator.
+- Riwayat perubahan iklan.
+- Pengingat konfirmasi ketersediaan.
+Tidak semua pengguna harus mengunggah KTP secara publik. Dokumen identitas harus disimpan secara privat.
+E. Sistem komunikasi
+Fitur:
+- Chat antar pengguna.
+- Chat realtime.
+- Tombol WhatsApp.
+- Pertanyaan cepat seperti "Barang masih tersedia?"
+- Status pesan.
+- Blokir dan laporkan pengguna.
+Ingat, transaksi tetap berlangsung di luar FJB.
+F. Sistem rating dan reputasi
+Karena FJB tidak memproses transaksi, reputasi perlu dibangun berdasarkan:
+- Kelengkapan profil.
+- Verifikasi identitas.
+- Respons terhadap chat.
+- Akurasi informasi iklan.
+- Konsistensi memperbarui ketersediaan.
+- Ulasan interaksi yang dapat dipertanggungjawabkan.
+G. Dashboard administrator
+Menggunakan Filament 5.
+
+Admin dapat mengelola:
+- Pengguna.
+- Kategori barang.
+- Kategori jasa.
+- Pertanyaan dinamis.
+- Iklan.
+- Laporan.
+- Verifikasi.
+- Usulan jasa baru.
+- Statistik barang dan jasa per kecamatan/desa.
+H. AI Assistant
+AI nantinya memiliki beberapa fungsi:
+Fitur AI	Kegunaan
+AI Registrasi	Membantu pengguna melengkapi profil
+AI Listing	Mengubah cerita menjadi iklan
+AI Kategori	Menyarankan kategori barang/jasa
+AI Deskripsi	Menulis deskripsi iklan
+AI Moderasi	Menandai informasi yang mencurigakan
+AI Pencarian	Memahami pencarian dengan bahasa sehari-hari
+
+
+AI tidak boleh otomatis menganggap informasi penjual benar. Informasi tetap harus dikonfirmasi oleh pengguna dan melalui mekanisme verifikasi FJB.
+3. Roadmap pengembangan FJB
+Ini urutan pengerjaan yang saya rekomendasikan.
+Tahap	Pekerjaan	Status
+1	Audit database	✅ Selesai
+2	Migration Barang dan Jasa	⏳ Belum
+3	Tabel detail jasa dan wilayah layanan	⏳ Belum
+4	Model dan relasi Laravel	⏳ Belum
+5	Seeder kategori dan jenis jasa	⏳ Belum
+6	Sistem atribut dan pertanyaan dinamis	⏳ Belum
+7	Sistem registrasi dan profil pengguna	⏳ Belum
+8	API Barang dan Jasa	⏳ Belum
+9	API pencarian lokasi	⏳ Belum
+10	Chat dan WhatsApp	⏳ Belum
+11	Sistem verifikasi dan moderasi	⏳ Belum
+12	Integrasi AI Assistant	⏳ Belum
+13	Mobile App React Native	🔄 Desain referensi tersedia
+14	Dashboard Filament	⏳ Belum
+15	Testing dan deployment	⏳ Belum
+
+
+4. Arsitektur akhir FJB
+Gambaran sistem yang akan kita bangun:
+                 FJB PLATFORM
+                       |
+          ┌────────────┴────────────┐
+          |                         |
+      MOBILE APP                ADMIN PANEL
+    React Native                Filament 5
+          |                         |
+          └────────────┬────────────┘
+                       |
+                  LARAVEL 13
+                       |
+       ┌───────────────┼────────────────┐
+       |               |                |
+   BARANG & JASA    LOKASI           PENGGUNA
+       |               |                |
+   Kategori        Provinsi          Registrasi
+   Subkategori     Kabupaten         Profil
+   Atribut         Kecamatan         Verifikasi
+   Harga           Desa              Reputasi
+       |
+   AI ASSISTANT
+       |
+   Chat & WhatsApp
+       |
+    MYSQL 8
+
+5. Apa yang kita kerjakan sekarang?
+Menurut saya, jangan menambah fitur baru dahulu. Kita sudah memiliki cukup banyak keputusan desain.
+
+Sekarang waktunya membangun fondasi database.
+
+Tahap berikutnya adalah Tahap 2: Migration Barang dan Jasa.
+
+Saya akan susun database dengan mempertimbangkan semua keputusan berikut:
+1. Satu akun bisa memasang barang dan jasa.
+2. Satu iklan jasa bisa memiliki banyak wilayah layanan.
+3. Kategori jasa dapat ditambah admin.
+4. Jenis jasa dapat ditambah admin.
+5. Jasa lainnya dapat diketik manual.
+6. Pertanyaan formulir dapat dibuat dinamis.
+7. AI, mode kuis, dan mode manual menggunakan struktur data yang sama.
+8. Ketersediaan barang dan jasa dipisahkan dari status publikasi.
+Target kita: sekali merancang fondasi database dengan benar, fitur-fitur berikutnya bisa dibangun tanpa terus-menerus mengubah struktur inti FJB.
+
+Kita mulai dari migration baru dan tetap mempertahankan seluruh data yang sudah ada.

@@ -31,15 +31,18 @@ class User extends Authenticatable
         ];
     }
 
-            public function profile()
-        {
-            return $this->hasOne(UserProfile::class);
-        }
+    public function profile()
+    {
+        return $this->hasOne(UserProfile::class);
+    }
 
-        public function store()
-        {
-            return $this->hasOne(Store::class);
-        }
+    public function store()
+    {
+        return $this->hasOne(Store::class);
+    }
 
-        
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
 }
