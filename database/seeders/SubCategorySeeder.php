@@ -13,6 +13,7 @@ class SubCategorySeeder extends Seeder
     {
         $data = [
 
+            // 1. Kendaraan
             'Kendaraan' => [
                 'Motor',
                 'Mobil',
@@ -20,93 +21,163 @@ class SubCategorySeeder extends Seeder
                 'Bus',
                 'Sepeda',
                 'Sparepart',
-                'Aksesoris'
+                'Aksesoris',
             ],
 
+            // 2. Properti
             'Properti' => [
                 'Rumah',
                 'Tanah',
                 'Ruko',
                 'Apartemen',
                 'Kos',
-                'Gudang'
+                'Gudang',
             ],
 
+            // 3. Bangunan & Material
+            'Bangunan & Material' => [
+                'Semen',
+                'Pasir',
+                'Batu',
+                'Bata dan Batako',
+                'Besi dan Baja',
+                'Baja Ringan',
+                'Kayu',
+                'Keramik dan Granit',
+                'Pintu dan Jendela',
+                'Atap dan Genteng',
+                'Cat dan Pelapis',
+                'Pipa dan Instalasi Air',
+                'Peralatan Bangunan',
+                'Material Bangunan Lainnya',
+            ],
+
+            // 4. Elektronik
             'Elektronik' => [
                 'HP',
                 'Laptop',
                 'Komputer',
                 'TV',
-                'Kamera'
+                'Kamera',
             ],
 
+            // 5. Fashion
             'Fashion' => [
                 'Pria',
                 'Wanita',
-                'Anak'
+                'Anak',
             ],
 
-            'Jasa' => [
-                'Servis',
-                'Bangunan',
-                'Transportasi',
-                'Pendidikan'
+            // 6. UMKM & Produk Lokal
+            'UMKM & Produk Lokal' => [
+                'Makanan',
+                'Minuman',
+                'Kue dan Roti',
+                'Oleh-oleh Khas Daerah',
+                'Kerajinan Tangan',
+                'Produk Rumahan',
+                'Produk Olahan',
+                'Fashion Lokal',
+                'Produk UMKM Lainnya',
             ],
 
+            // 7. Pertanian
             'Pertanian' => [
                 'Alat Pertanian',
                 'Bibit',
                 'Pupuk',
-                'Hasil Panen'
+                'Hasil Panen',
             ],
 
-            'Hobi & Olahraga' => [
-                'Sepeda',
-                'Alat Musik',
-                'Gaming',
-                'Olahraga'
+            // 8. Peternakan
+            'Peternakan' => [
+                'Sapi',
+                'Kambing',
+                'Domba',
+                'Ayam',
+                'Bebek',
+                'Burung Ternak',
+                'Ikan Konsumsi',
+                'Bibit Ternak',
+                'Pakan Ternak',
+                'Peralatan Peternakan',
+                'Hasil Peternakan',
+                'Lainnya',
             ],
 
+            // 9. Hewan Peliharaan
             'Hewan Peliharaan' => [
                 'Kucing',
                 'Anjing',
                 'Burung',
-                'Ikan'
+                'Ikan',
             ],
 
+            // 10. Jasa
+            'Jasa' => [
+                'Servis',
+                'Bangunan',
+                'Transportasi',
+                'Pendidikan',
+            ],
+
+            // 11. Hobi & Olahraga
+            'Hobi & Olahraga' => [
+                'Sepeda',
+                'Alat Musik',
+                'Gaming',
+                'Olahraga',
+            ],
+
+            // 12. Lowongan Kerja
             'Lowongan Kerja' => [
                 'Full Time',
                 'Part Time',
-                'Freelance'
+                'Freelance',
             ],
 
+            // 13. Lainnya
             'Lainnya' => [
-                'Lain-lain'
-            ]
-
+                'Lain-lain',
+            ],
         ];
 
-        foreach ($data as $categoryName => $subs) {
+        foreach ($data as $categoryName => $subCategories) {
 
+            // Cari kategori berdasarkan nama
             $category = Category::where('name', $categoryName)->first();
 
-            if (!$category) continue;
+            if (!$category) {
+                $this->command?->warn(
+                    "Kategori tidak ditemukan: {$categoryName}"
+                );
 
-            foreach ($subs as $index => $sub) {
+                continue;
+            }
 
+            foreach ($subCategories as $subCategoryName) {
+
+                $slug = Str::slug($subCategoryName);
+
+                // Buat atau perbarui subkategori
                 SubCategory::updateOrCreate(
                     [
                         'category_id' => $category->id,
-                        'slug' => Str::slug($sub)
+                        'slug' => $slug,
                     ],
                     [
-                        'name' => $sub,
-                        'sort' => $index + 1,
-                        'is_active' => true
+                        'name' => $subCategoryName,
                     ]
                 );
             }
 
+            $this->command?->info(
+                "Subkategori {$categoryName} berhasil diproses."
+            );
         }
+
+        $this->command?->info(
+            'Seluruh proses SubCategorySeeder selesai.'
+        );
     }
 }

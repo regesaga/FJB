@@ -10,6 +10,7 @@ class SubCategoryAttribute extends Model
     protected $fillable = [
         'sub_category_id',
         'product_attribute_id',
+        'listing_type',
         'required',
         'filterable',
         'searchable',

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use Illuminate\Support\Str;
 class Product extends Model
 {
     use HasFactory;
@@ -31,7 +31,14 @@ class Product extends Model
         'availability_confirmed_at',
         'availability_expires_at',
     ];
-
+protected static function booted(): void
+{
+    static::creating(function (Product $product): void {
+        if (empty($product->public_id)) {
+            $product->public_id = (string) Str::uuid();
+        }
+    });
+}
     protected function casts(): array
     {
         return [

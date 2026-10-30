@@ -1,0 +1,41 @@
+Oke. Kita tunda dulu pengerjaan seeder Kendaraan, termasuk Bus, Alat Berat, dan Kendaraan Khusus. Motor, Mobil, Sepeda, dan Truk tetap tersimpan.
+
+Menurut saya, sekarang kita sebaiknya beralih ke kategori Properti.
+1. Urutan pengembangan FJB berikutnya
+Saya merekomendasikan urutan berikut:
+Prioritas	Kategori	Subkategori
+1	Properti	Rumah, Tanah, Apartemen, Ruko, Kost, Properti Komersial
+2	Bangunan & Material	Semen, Pasir, Batu, Besi, Kayu, Keramik, dan lainnya
+3	Elektronik	HP, Laptop, TV, Kamera, Audio, Peralatan Rumah Tangga
+4	Fashion	Pakaian, Sepatu, Tas
+5	UMKM & Produk Lokal	Makanan, Minuman, Oleh-oleh, Kerajinan
+6	Pertanian	Alat Pertanian, Hasil Pertanian, Bibit, Pupuk
+7	Peternakan	Sapi, Kambing, Domba, Ayam, Bebek, dan lainnya
+8	Hewan Peliharaan	Kucing, Anjing, Burung, Ikan
+9	Hobi & Olahraga	Alat Musik, Sepeda, Peralatan Olahraga
+10	Lainnya	Barang yang tidak masuk kategori lain
+
+
+Kategori Jasa dan Lowongan Kerja sudah memiliki struktur tersendiri.
+2. Kita mulai dari Properti
+Sebelum membuat atribut, kita periksa dulu subkategori yang sudah tersedia.
+
+Jalankan:
+php artisan tinker --execute="
+App\Models\SubCategory::where('category_id', 2)
+->orderBy('id')
+->get(['id', 'name', 'slug'])
+->dump();
+"
+
+Kirim hasilnya.
+3. Target pengembangan
+Kita akan membangun setiap kategori dengan pola yang sama:
+1. Periksa kategori dan subkategori.
+2. Tentukan pertanyaan khusus setiap subkategori.
+3. Tentukan tipe input dan pilihan jawabannya.
+4. Masukkan ke seeder.
+5. Simpan ke database.
+6. Verifikasi data.
+7. Uji API.
+Dengan pola ini, nantinya aplikasi React Native cukup membaca pertanyaan dari API. Kita tidak perlu membuat form khusus secara manual untuk setiap jenis barang.

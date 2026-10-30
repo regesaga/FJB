@@ -410,19 +410,20 @@ class ServiceAttributeSeeder extends Seeder
                         );
                     }
 
-                    SubCategoryAttribute::updateOrCreate(
-                        [
-                            'sub_category_id' => $subcategory->id,
-                            'product_attribute_id' => $attribute->id,
-                        ],
-                        [
-                            'required' => $question['required'] ?? false,
-                            'filterable' => true,
-                            'searchable' => true,
-                            'visible' => true,
-                            'sort' => $index + 1,
-                        ]
-                    );
+                   SubCategoryAttribute::updateOrCreate(
+    [
+        'sub_category_id' => $subcategory->id,
+        'product_attribute_id' => $attribute->id,
+        'listing_type' => 'service',
+    ],
+    [
+        'required' => $question['required'] ?? false,
+        'filterable' => true,
+        'searchable' => true,
+        'visible' => true,
+        'sort' => $index + 1,
+    ]
+);
                 }
             }
         });

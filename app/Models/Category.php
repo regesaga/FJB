@@ -4,16 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Category extends Model
 {
     use HasFactory;
-    protected function casts(): array
-    {
-        return [
-            'is_active' => 'boolean',
-        ];
-    }
+
     protected $fillable = [
         'name',
         'slug',
@@ -23,8 +19,35 @@ class Category extends Model
         'is_active',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+        ];
+    }
+
     /**
-     * Relasi ke Sub Category
+     * Menggunakan UUID untuk URL, bukan ID angka.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'public_id';
+    }
+
+    /**
+     * Membuat UUID otomatis ketika kategori dibuat.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Category $category): void {
+            if (empty($category->public_id)) {
+                $category->public_id = (string) Str::uuid();
+            }
+        });
+    }
+
+    /**
+     * Relasi ke Sub Category.
      */
     public function subCategories()
     {
@@ -32,7 +55,7 @@ class Category extends Model
     }
 
     /**
-     * Relasi ke Dynamic Attribute
+     * Relasi ke Dynamic Attribute.
      */
     public function categoryAttributes()
     {
@@ -40,7 +63,7 @@ class Category extends Model
     }
 
     /**
-     * Relasi ke Product
+     * Relasi ke Product.
      */
     public function products()
     {

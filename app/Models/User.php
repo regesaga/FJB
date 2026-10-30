@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
@@ -17,7 +20,14 @@ class User extends Authenticatable
         'email',
         'password',
     ];
-
+protected static function booted(): void
+{
+    static::creating(function (User $user): void {
+        if (empty($user->public_id)) {
+            $user->public_id = (string) Str::uuid();
+        }
+    });
+}
     protected $hidden = [
         'password',
         'remember_token',
@@ -29,6 +39,18 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Menentukan pengguna yang boleh mengakses Filament.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->hasAnyRole([
+            'Super Admin',
+            'Admin',
+            'Moderator',
+        ]);
     }
 
     public function profile()

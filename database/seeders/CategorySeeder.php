@@ -20,6 +20,10 @@ class CategorySeeder extends Seeder
                 'icon' => 'heroicon-o-home',
             ],
             [
+                'name' => 'Bangunan & Material',
+                'icon' => 'heroicon-o-building-office-2',
+            ],
+            [
                 'name' => 'Elektronik',
                 'icon' => 'heroicon-o-device-phone-mobile',
             ],
@@ -28,20 +32,28 @@ class CategorySeeder extends Seeder
                 'icon' => 'heroicon-o-shopping-bag',
             ],
             [
-                'name' => 'Jasa',
-                'icon' => 'heroicon-o-wrench-screwdriver',
+                'name' => 'UMKM & Produk Lokal',
+                'icon' => 'heroicon-o-building-storefront',
             ],
             [
                 'name' => 'Pertanian',
                 'icon' => 'heroicon-o-sparkles',
             ],
             [
-                'name' => 'Hobi & Olahraga',
-                'icon' => 'heroicon-o-trophy',
+                'name' => 'Peternakan',
+                'icon' => 'heroicon-o-beaker',
             ],
             [
                 'name' => 'Hewan Peliharaan',
                 'icon' => 'heroicon-o-heart',
+            ],
+            [
+                'name' => 'Jasa',
+                'icon' => 'heroicon-o-wrench-screwdriver',
+            ],
+            [
+                'name' => 'Hobi & Olahraga',
+                'icon' => 'heroicon-o-trophy',
             ],
             [
                 'name' => 'Lowongan Kerja',
@@ -53,15 +65,16 @@ class CategorySeeder extends Seeder
             ],
         ];
 
-        foreach ($categories as $category) {
+        foreach ($categories as $index => $category) {
+            $slug = Str::slug($category['name']);
+
             Category::updateOrCreate(
-                ['slug' => Str::slug($category['name'])],
+                ['slug' => $slug],
                 [
                     'name' => $category['name'],
-                    'slug' => Str::slug($category['name']),
                     'icon' => $category['icon'],
                     'image' => null,
-                    'sort' => 0,
+                    'sort' => $index + 1,
                     'is_active' => true,
                 ]
             );

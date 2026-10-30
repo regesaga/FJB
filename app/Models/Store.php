@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use Illuminate\Support\Str;
 class Store extends Model
 {
     use HasFactory;
@@ -18,6 +18,14 @@ class Store extends Model
             'longitude' => 'decimal:7',
         ];
     }
+    protected static function booted(): void
+{
+    static::creating(function (Store $store): void {
+        if (empty($store->public_id)) {
+            $store->public_id = (string) Str::uuid();
+        }
+    });
+}
     protected $fillable = [
         'user_id',
         'name',
