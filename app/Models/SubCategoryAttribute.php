@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class SubCategoryAttribute extends Model
 {
@@ -27,6 +28,20 @@ class SubCategoryAttribute extends Model
             'visible' => 'boolean',
             'sort' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (SubCategoryAttribute $mapping): void {
+            if (empty($mapping->public_id)) {
+                $mapping->public_id = (string) Str::uuid();
+            }
+        });
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'public_id';
     }
 
     public function subCategory(): BelongsTo

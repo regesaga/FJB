@@ -11,13 +11,14 @@ class Category extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name',
-        'slug',
-        'icon',
-        'image',
-        'sort',
-        'is_active',
-    ];
+    'name',
+    'slug',
+    'listing_type',
+    'icon',
+    'image',
+    'sort',
+    'is_active',
+];
 
     protected function casts(): array
     {

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Filament\Resources\Categories;
+use App\Filament\Resources\Categories\RelationManagers\SubCategoriesRelationManager;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Categories\Pages\ListCategories;
@@ -28,7 +29,7 @@ class CategoryResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Kategori';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Master Data';
+    protected static ?string $navigationParentItem = 'Produk';
 
     protected static ?int $navigationSort = 1;
 
@@ -43,9 +44,11 @@ class CategoryResource extends Resource
     }
 
     public static function getRelations(): array
-    {
-        return [];
-    }
+{
+    return [
+        SubCategoriesRelationManager::class,
+    ];
+}
 
     public static function getPages(): array
     {
