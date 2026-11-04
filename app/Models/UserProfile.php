@@ -39,4 +39,12 @@ class UserProfile extends Model
         {
             return $this->belongsTo(User::class);
         }
+        public function identityVerification()
+{
+    return $this->hasOne(
+        UserIdentityVerification::class,
+        'user_id',
+        'user_id'
+    );
+}
 }

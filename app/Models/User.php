@@ -10,6 +10,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements FilamentUser
 {
@@ -38,9 +40,27 @@ protected static function booted(): void
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'suspended_at' => 'datetime',
         ];
     }
+    public function suspendedBy(): BelongsTo
+{
+    return $this->belongsTo(User::class, 'suspended_by');
+}
 
+public function isSuspended(): bool
+{
+    return $this->suspended_at !== null;
+}
+public function suspensionLogs(): HasMany
+{
+    return $this->hasMany(UserSuspensionLog::class);
+}
+
+public function performedSuspensionLogs(): HasMany
+{
+    return $this->hasMany(UserSuspensionLog::class, 'admin_id');
+}
     /**
      * Menentukan pengguna yang boleh mengakses Filament.
      */
@@ -67,4 +87,8 @@ protected static function booted(): void
     {
         return $this->hasMany(Product::class);
     }
+    public function identityVerification()
+{
+    return $this->hasOne(UserIdentityVerification::class);
+}
 }

@@ -9,11 +9,12 @@ class QuestionBuilder extends Page
 {
     protected static ?string $navigationLabel = 'Kelola Pertanyaan';
 
-    protected static ?string $navigationParentItem = 'Produk';
+    protected static string|\UnitEnum|null $navigationGroup = 'Master Data';
 
     protected static ?int $navigationSort = 3;
 
-    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|\BackedEnum|null $navigationIcon =
+        Heroicon::OutlinedRectangleStack;
 
     protected string $view = 'filament.pages.question-builder';
 }

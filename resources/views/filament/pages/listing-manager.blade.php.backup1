@@ -1,0 +1,215 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Models\Category;
+use App\Models\Product;
+use App\Models\SubCategory;
+use Filament\Pages\Page;
+use Illuminate\Database\Eloquent\Builder;
+use Livewire\Attributes\Url;
+use Livewire\WithPagination;
+
+class ListingManager extends Page
+{
+    use WithPagination;
+
+    protected static bool $shouldRegisterNavigation = false;
+
+    protected static ?string $navigationLabel = 'Manajemen Listing';
+
+    protected static ?string $title = 'Manajemen Listing';
+
+    protected static string|\BackedEnum|null $navigationIcon =
+        \Filament\Support\Icons\Heroicon::OutlinedRectangleStack;
+
+    protected string $view = 'filament.pages.listing-manager';
+
+    #[Url]
+    public ?string $listingType = null;
+
+    #[Url]
+    public ?int $categoryId = null;
+
+    #[Url]
+    public ?int $subCategoryId = null;
+
+    #[Url]
+    public string $search = '';
+
+    #[Url]
+    public string $status = '';
+
+    public function mount(): void
+    {
+        $this->validateFilters();
+    }
+
+    protected function validateFilters(): void
+    {
+        $category = $this->categoryId
+            ? Category::where('is_active', true)->find($this->categoryId)
+            : null;
+
+        if ($this->categoryId && ! $category) {
+            $this->categoryId = null;
+            $this->subCategoryId = null;
+            return;
+        }
+
+        if ($category) {
+            $this->listingType = $category->listing_type;
+        }
+
+        if ($this->subCategoryId) {
+            $subCategory = SubCategory::query()
+                ->where('is_active', true)
+                ->where('category_id', $this->categoryId)
+                ->find($this->subCategoryId);
+
+            if (! $subCategory) {
+                $this->subCategoryId = null;
+            }
+        }
+    }
+
+    public function getCategoryProperty(): ?Category
+    {
+        return $this->categoryId
+            ? Category::where('is_active', true)->find($this->categoryId)
+            : null;
+    }
+
+    public function getSubCategoryProperty(): ?SubCategory
+    {
+        return $this->subCategoryId
+            ? SubCategory::where('is_active', true)->find($this->subCategoryId)
+            : null;
+    }
+
+    public function getPageHeading(): string
+    {
+        $category = $this->category;
+        $subCategory = $this->subCategory;
+
+        if ($subCategory) {
+            return 'Manajemen Listing ' . $subCategory->name;
+        }
+
+        if ($category) {
+            return 'Manajemen Listing ' . $category->name;
+        }
+
+        return match ($this->listingType) {
+            'product' => 'Manajemen Semua Produk',
+            'service' => 'Manajemen Semua Jasa',
+            'other' => 'Manajemen Listing Lainnya',
+            default => 'Manajemen Semua Listing',
+        };
+    }
+
+    public function getPageDescription(): string
+    {
+        $name = $this->subCategory?->name
+            ?? $this->category?->name;
+
+        if ($name) {
+            return "Kelola seluruh listing {$name} yang diiklankan pengguna.";
+        }
+
+        return 'Kelola seluruh listing berdasarkan jenis dan kategori.';
+    }
+
+    protected function baseQuery(): Builder
+    {
+        return Product::query()
+            ->when(
+                $this->listingType,
+                fn (Builder $query) => $query->where(
+                    'listing_type',
+                    $this->listingType
+                )
+            )
+            ->when(
+                $this->categoryId,
+                fn (Builder $query) => $query->where(
+                    'category_id',
+                    $this->categoryId
+                )
+            )
+            ->when(
+                $this->subCategoryId,
+                fn (Builder $query) => $query->where(
+                    'sub_category_id',
+                    $this->subCategoryId
+                )
+            );
+    }
+
+    public function getStatistics(): array
+    {
+        $query = $this->baseQuery();
+
+        return [
+            'total' => (clone $query)->count(),
+            'draft' => (clone $query)->where('status', 'draft')->count(),
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'published' => (clone $query)->where('status', 'published')->count(),
+            'rejected' => (clone $query)->where('status', 'rejected')->count(),
+        ];
+    }
+
+    public function getListings()
+    {
+        return $this->baseQuery()
+            ->with([
+                'category',
+                'subCategory',
+                'user',
+                'primaryImage',
+            ])
+            ->when(
+                $this->status,
+                fn (Builder $query) => $query->where(
+                    'status',
+                    $this->status
+                )
+            )
+            ->when(
+                $this->search,
+                fn (Builder $query) => $query->where(
+                    'title',
+                    'like',
+                    '%' . $this->search . '%'
+                )
+            )
+            ->latest()
+            ->paginate(15);
+    }
+
+    public function setStatus(string $status): void
+    {
+        $allowedStatuses = [
+            '',
+            'draft',
+            'pending',
+            'published',
+            'rejected',
+        ];
+
+        if (in_array($status, $allowedStatuses, true)) {
+            $this->status = $status;
+            $this->resetPage();
+        }
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStatus(): void
+    {
+        $this->resetPage();
+    }
+}

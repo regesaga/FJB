@@ -1,62 +1,561 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
+    @php
+        $statistics = $this->getStatistics();
+        $listings = $this->getListings();
+        $attributes = $this->getDynamicAttributes();
 
-        <div class="flex flex-col gap-4 sm:flex-row">
-            <input
-                type="text"
-                wire:model.live.debounce.500ms="search"
-                placeholder="Cari judul listing..."
-                class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-            >
+        $cards = [
+            ['key' => 'total', 'label' => 'Total Listing', 'icon' => '▦', 'color' => 'blue'],
+            ['key' => 'published', 'label' => 'Published', 'icon' => '✓', 'color' => 'green'],
+            ['key' => 'pending', 'label' => 'Menunggu Review', 'icon' => '◷', 'color' => 'orange'],
+            ['key' => 'draft', 'label' => 'Draft', 'icon' => '✎', 'color' => 'gray'],
+            ['key' => 'rejected', 'label' => 'Ditolak', 'icon' => '×', 'color' => 'red'],
+        ];
+    @endphp
 
-            <select
-                wire:model.live="listingType"
-                class="rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-            >
-                <option value="">Semua Jenis</option>
-                <option value="product">Produk</option>
-                <option value="service">Jasa</option>
-                <option value="other">Lainnya</option>
-            </select>
-        </div>
+    <style>
+        .fjb-dashboard {
+            --fjb-primary: #2563eb;
+            --fjb-text: #172033;
+            --fjb-muted: #788398;
+            --fjb-border: #e8edf4;
+            color: var(--fjb-text);
+            width: 100%;
+        }
 
-        <div class="overflow-x-auto rounded-xl border dark:border-gray-700">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-100 dark:bg-gray-800">
-                    <tr>
-                        <th class="p-4 text-left">Judul</th>
-                        <th class="p-4 text-left">Jenis</th>
-                        <th class="p-4 text-left">Kategori</th>
-                        <th class="p-4 text-left">Subkategori</th>
-                        <th class="p-4 text-left">Harga</th>
-                        <th class="p-4 text-left">Status</th>
-                    </tr>
-                </thead>
+        .dark .fjb-dashboard {
+            --fjb-text: #f1f5f9;
+            --fjb-muted: #a1aabd;
+            --fjb-border: #303b4d;
+        }
 
-                <tbody>
-                    @forelse ($this->getListings()->paginate(15) as $listing)
-                        <tr class="border-t dark:border-gray-700">
-                            <td class="p-4">{{ $listing->title }}</td>
-                            <td class="p-4">{{ ucfirst($listing->listing_type) }}</td>
-                            <td class="p-4">{{ $listing->category?->name ?? '-' }}</td>
-                            <td class="p-4">{{ $listing->subCategory?->name ?? '-' }}</td>
-                            <td class="p-4">
-                                {{ $listing->price !== null
-                                    ? 'Rp ' . number_format((float) $listing->price, 0, ',', '.')
-                                    : '-' }}
-                            </td>
-                            <td class="p-4">{{ ucfirst($listing->status) }}</td>
-                        </tr>
-                    @empty
+        .fjb-dashboard * {
+            box-sizing: border-box;
+        }
+
+        .fjb-hero {
+            position: relative;
+            overflow: hidden;
+            padding: 30px;
+            border-radius: 18px;
+            color: white;
+            background: linear-gradient(120deg, #172554, #1d4ed8 65%, #3b82f6);
+            margin-bottom: 24px;
+        }
+
+        .fjb-hero:after {
+            content: "";
+            position: absolute;
+            width: 240px;
+            height: 240px;
+            border-radius: 50%;
+            right: -65px;
+            top: -110px;
+            background: rgba(255,255,255,.10);
+        }
+
+        .fjb-hero h2 {
+            color: white;
+            font-size: 25px;
+            font-weight: 800;
+            margin: 0 0 8px;
+        }
+
+        .fjb-hero p {
+            color: #dbeafe;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .fjb-hero-label {
+            display: inline-block;
+            padding: 6px 11px;
+            border: 1px solid rgba(255,255,255,.25);
+            background: rgba(255,255,255,.12);
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            letter-spacing: .7px;
+        }
+
+        .fjb-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 15px;
+            margin-bottom: 24px;
+        }
+
+        .fjb-stat {
+            background: white;
+            border: 1px solid var(--fjb-border);
+            border-radius: 15px;
+            padding: 19px;
+            min-width: 0;
+            box-shadow: 0 3px 12px rgba(15,23,42,.035);
+            transition: transform .2s, box-shadow .2s;
+        }
+
+        .dark .fjb-stat,
+        .dark .fjb-panel {
+            background: #111827;
+        }
+
+        .fjb-stat:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(15,23,42,.08);
+        }
+
+        .fjb-stat-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .fjb-stat-label {
+            color: var(--fjb-muted);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .fjb-stat-icon {
+            display: flex;
+            width: 38px;
+            height: 38px;
+            border-radius: 11px;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .fjb-stat-number {
+            font-size: 29px;
+            font-weight: 800;
+            margin-top: 13px;
+            letter-spacing: -1px;
+            color: var(--fjb-text);
+        }
+
+        .fjb-stat-blue .fjb-stat-icon { background: #dbeafe; color: #2563eb; }
+        .fjb-stat-green .fjb-stat-icon { background: #dcfce7; color: #15803d; }
+        .fjb-stat-orange .fjb-stat-icon { background: #ffedd5; color: #c2410c; }
+        .fjb-stat-gray .fjb-stat-icon { background: #f1f5f9; color: #475569; }
+        .fjb-stat-red .fjb-stat-icon { background: #fee2e2; color: #dc2626; }
+
+        .fjb-panel {
+            background: white;
+            border: 1px solid var(--fjb-border);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 3px 12px rgba(15,23,42,.035);
+        }
+
+        .fjb-panel-header {
+            padding: 20px 22px;
+            border-bottom: 1px solid var(--fjb-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .fjb-panel-title {
+            color: var(--fjb-text);
+            font-size: 16px;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .fjb-panel-subtitle {
+            color: var(--fjb-muted);
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .fjb-filter {
+            padding: 18px 22px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .fjb-search {
+            flex: 1;
+            min-width: 220px;
+            position: relative;
+        }
+
+        .fjb-search input,
+        .fjb-select {
+            width: 100%;
+            height: 43px;
+            border: 1px solid var(--fjb-border);
+            border-radius: 10px;
+            padding: 0 13px;
+            background: white;
+            color: #172033;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .dark .fjb-search input,
+        .dark .fjb-select {
+            background: #1f2937;
+            color: white;
+        }
+
+        .fjb-search input:focus,
+        .fjb-select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+        }
+
+        .fjb-select {
+            width: 190px;
+            cursor: pointer;
+        }
+
+        .fjb-table-wrap {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .fjb-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+
+        .fjb-table th {
+            background: #f8fafc;
+            color: #64748b;
+            padding: 14px 17px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .dark .fjb-table th {
+            background: #1f2937;
+            color: #cbd5e1;
+        }
+
+        .fjb-table td {
+            padding: 16px 17px;
+            border-top: 1px solid var(--fjb-border);
+            font-size: 12px;
+            color: var(--fjb-text);
+            vertical-align: middle;
+        }
+
+        .fjb-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .dark .fjb-table tbody tr:hover {
+            background: #1f2937;
+        }
+
+        .fjb-product {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 220px;
+        }
+
+        .fjb-product-image {
+            width: 55px;
+            height: 48px;
+            border-radius: 9px;
+            background: #eff6ff;
+            color: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 21px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .fjb-product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .fjb-product-name {
+            font-size: 13px;
+            font-weight: 750;
+            color: var(--fjb-text);
+            line-height: 1.4;
+        }
+
+        .fjb-product-type {
+            color: var(--fjb-muted);
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        .fjb-price {
+            font-weight: 800;
+            color: #2563eb;
+            white-space: nowrap;
+        }
+
+        .fjb-badge {
+            display: inline-flex;
+            padding: 6px 10px;
+            border-radius: 30px;
+            font-size: 10px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .fjb-badge-published { background: #dcfce7; color: #15803d; }
+        .fjb-badge-pending { background: #ffedd5; color: #c2410c; }
+        .fjb-badge-draft { background: #f1f5f9; color: #475569; }
+        .fjb-badge-rejected { background: #fee2e2; color: #b91c1c; }
+
+        .fjb-empty {
+            padding: 65px 20px;
+            text-align: center;
+        }
+
+        .fjb-empty-icon {
+            width: 68px;
+            height: 68px;
+            border-radius: 20px;
+            background: #eff6ff;
+            color: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 30px;
+        }
+
+        .fjb-empty h3 {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--fjb-text);
+            margin-bottom: 6px;
+        }
+
+        .fjb-empty p {
+            font-size: 12px;
+            color: var(--fjb-muted);
+        }
+
+        .fjb-pagination {
+            padding: 17px 22px;
+            border-top: 1px solid var(--fjb-border);
+        }
+
+        .fjb-count {
+            color: var(--fjb-muted);
+            font-size: 12px;
+        }
+
+        @media(max-width: 1100px) {
+            .fjb-stat-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media(max-width: 640px) {
+            .fjb-hero {
+                padding: 23px 19px;
+            }
+
+            .fjb-hero h2 {
+                font-size: 21px;
+            }
+
+            .fjb-stat-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .fjb-stat {
+                padding: 14px;
+            }
+
+            .fjb-stat-number {
+                font-size: 24px;
+            }
+
+            .fjb-filter {
+                padding: 14px;
+            }
+
+            .fjb-search,
+            .fjb-select {
+                width: 100%;
+                min-width: 100%;
+            }
+
+            .fjb-panel-header {
+                padding: 16px;
+            }
+        }
+    </style>
+
+    <div class="fjb-dashboard">
+
+        {{-- HEADER --}}
+        <section class="fjb-hero">
+            <div class="fjb-hero-label">FJB ADMINISTRATION</div>
+            <h2>{{ $this->getPageHeading() }}</h2>
+            <p>Kelola, pantau, dan awasi seluruh aktivitas listing marketplace FJB.</p>
+        </section>
+
+        {{-- STATISTIK --}}
+        <section class="fjb-stat-grid">
+            @foreach ($cards as $card)
+                <div class="fjb-stat fjb-stat-{{ $card['color'] }}">
+                    <div class="fjb-stat-top">
+                        <span class="fjb-stat-label">{{ $card['label'] }}</span>
+                        <span class="fjb-stat-icon">{{ $card['icon'] }}</span>
+                    </div>
+                    <div class="fjb-stat-number">
+                        {{ number_format($statistics[$card['key']] ?? 0) }}
+                    </div>
+                </div>
+            @endforeach
+        </section>
+
+        {{-- DATA LISTING --}}
+        <section class="fjb-panel">
+            <div class="fjb-panel-header">
+                <div>
+                    <h3 class="fjb-panel-title">Manajemen Listing</h3>
+                    <div class="fjb-panel-subtitle">
+                        Data iklan dan produk yang terdaftar di marketplace
+                    </div>
+                </div>
+
+                <span class="fjb-count">
+                    {{ number_format($listings->total()) }} data
+                </span>
+            </div>
+
+            {{-- FILTER --}}
+            <div class="fjb-filter">
+                <div class="fjb-search">
+                    <input
+                        type="search"
+                        wire:model.live.debounce.400ms="search"
+                        placeholder="Cari nama produk atau listing..."
+                    >
+                </div>
+
+                <select wire:model.live="status" class="fjb-select">
+                    <option value="">Semua Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="pending">Menunggu Review</option>
+                    <option value="published">Published</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+
+            {{-- TABEL --}}
+            <div class="fjb-table-wrap">
+                <table class="fjb-table">
+                    <thead>
                         <tr>
-                            <td colspan="6" class="p-8 text-center text-gray-500">
-                                Belum ada listing.
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                            <th>Produk / Listing</th>
+                            <th>Kategori</th>
+                            <th>Subkategori</th>
+                            <th>Harga</th>
 
+                            @foreach ($attributes as $attribute)
+                                <th>{{ $attribute->name }}</th>
+                            @endforeach
+
+                            <th>Penjual</th>
+                            <th>Status</th>
+                            <th>Tanggal</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @forelse ($listings as $listing)
+                            <tr>
+                                <td>
+                                    <div class="fjb-product">
+                                        <div class="fjb-product-image">
+                                            @if ($listing->primaryImage)
+                                                <img src="{{ $listing->primaryImage->image_path ?? $listing->primaryImage->url ?? '' }}" alt="{{ $listing->title }}">
+                                            @else
+                                                ◈
+                                            @endif
+                                        </div>
+
+                                        <div>
+                                            <div class="fjb-product-name">
+                                                {{ $listing->title }}
+                                            </div>
+                                            <div class="fjb-product-type">
+                                                {{ ucfirst($listing->listing_type) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td>{{ $listing->category?->name ?? '-' }}</td>
+                                <td>{{ $listing->subCategory?->name ?? '-' }}</td>
+
+                                <td class="fjb-price">
+                                    {{ $listing->price !== null
+                                        ? 'Rp ' . number_format($listing->price, 0, ',', '.')
+                                        : '-' }}
+                                </td>
+
+                                @foreach ($attributes as $attribute)
+                                    <td>
+                                        {{ $listing->attributeValues
+                                            ->firstWhere('product_attribute_id', $attribute->id)
+                                            ?->value ?? '-' }}
+                                    </td>
+                                @endforeach
+
+                                <td>{{ $listing->user?->name ?? '-' }}</td>
+
+                                <td>
+                                    <span class="fjb-badge fjb-badge-{{ $listing->status }}">
+                                        {{ ucfirst($listing->status) }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {{ $listing->created_at?->format('d M Y') ?? '-' }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="{{ 7 + $attributes->count() }}">
+                                    <div class="fjb-empty">
+                                        <div class="fjb-empty-icon">⌕</div>
+                                        <h3>Belum Ada Listing</h3>
+                                        <p>Listing yang sesuai dengan kategori ini akan muncul di sini.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="fjb-pagination">
+                {{ $listings->links() }}
+            </div>
+        </section>
     </div>
 </x-filament-panels::page>

@@ -13,7 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-
+use UnitEnum;
 class SubCategoryResource extends Resource
 {
     protected static ?string $model = SubCategory::class;
@@ -27,7 +27,7 @@ class SubCategoryResource extends Resource
     protected static ?string $modelLabel = 'Subkategori';
 
     protected static ?string $pluralModelLabel = 'Subkategori';
-protected static ?string $navigationParentItem = 'Produk';
+protected static string|UnitEnum|null $navigationGroup = 'Master Data';
 
     protected static ?int $navigationSort = 2;
 

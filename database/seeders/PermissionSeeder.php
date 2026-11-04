@@ -13,6 +13,12 @@ class PermissionSeeder extends Seeder
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Daftar Permission
+        |--------------------------------------------------------------------------
+        */
+
         $permissions = [
             // Dashboard
             'dashboard.view',
@@ -53,6 +59,10 @@ class PermissionSeeder extends Seeder
             'users.update',
             'users.suspend',
 
+            // Verifikasi identitas
+            'identity_verifications.view',
+            'identity_verifications.review',
+
             // Laporan
             'reports.view',
             'reports.update',
@@ -66,54 +76,87 @@ class PermissionSeeder extends Seeder
             ]);
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Permission Admin
+        |--------------------------------------------------------------------------
+        */
+
         $adminPermissions = [
             'dashboard.view',
 
+            // Kategori
             'categories.view',
             'categories.create',
             'categories.update',
             'categories.delete',
 
+            // Subkategori
             'sub_categories.view',
             'sub_categories.create',
             'sub_categories.update',
             'sub_categories.delete',
 
+            // Atribut dinamis
             'attributes.view',
             'attributes.create',
             'attributes.update',
             'attributes.delete',
 
+            // Pilihan atribut
             'attribute_options.view',
             'attribute_options.create',
             'attribute_options.update',
             'attribute_options.delete',
 
+            // Listing
             'listings.view',
             'listings.update',
             'listings.approve',
             'listings.reject',
             'listings.delete',
 
+            // Pengguna
             'users.view',
             'users.update',
             'users.suspend',
 
+            // Verifikasi identitas
+            'identity_verifications.view',
+            'identity_verifications.review',
+
+            // Laporan
             'reports.view',
             'reports.update',
             'reports.resolve',
         ];
 
+        /*
+        |--------------------------------------------------------------------------
+        | Permission Moderator
+        |--------------------------------------------------------------------------
+        */
+
         $moderatorPermissions = [
             'dashboard.view',
+
+            // Listing
             'listings.view',
             'listings.update',
             'listings.approve',
             'listings.reject',
+
+            // Laporan
             'reports.view',
             'reports.update',
             'reports.resolve',
         ];
+
+        /*
+        |--------------------------------------------------------------------------
+        | Pembuatan Role
+        |--------------------------------------------------------------------------
+        */
 
         $admin = Role::firstOrCreate([
             'name' => 'Admin',
@@ -129,6 +172,12 @@ class PermissionSeeder extends Seeder
             'name' => 'Super Admin',
             'guard_name' => 'web',
         ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sinkronisasi Permission
+        |--------------------------------------------------------------------------
+        */
 
         $admin->syncPermissions($adminPermissions);
 
