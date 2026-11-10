@@ -8,6 +8,10 @@ use Illuminate\Support\Str;
 class Product extends Model
 {
     use HasFactory;
+    public function getRouteKeyName(): string
+{
+    return 'public_id';
+}
 
     protected $fillable = [
         'user_id',
