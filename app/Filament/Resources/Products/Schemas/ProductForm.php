@@ -9,6 +9,11 @@ use App\Models\SubCategory;
 use App\Models\SubCategoryAttribute;
 use App\Models\User;
 
+use App\Models\Province;
+use App\Models\Regency;
+use App\Models\District;
+use App\Models\Village;
+
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -23,21 +28,99 @@ use Filament\Schemas\Schema;
 
 class ProductForm
 {
+    /**
+     * Menentukan jenis listing dari URL atau kategori.
+     */
+    private static function listingType(): string
+    {
+        $type = request()->query('listingType');
+
+        if (in_array($type, ['product', 'service', 'other'], true)) {
+            return $type;
+        }
+
+        $categorySlug = request()->query('category');
+
+        if ($categorySlug) {
+            $type = Category::where('slug', $categorySlug)
+                ->value('listing_type');
+
+            if (in_array($type, ['product', 'service', 'other'], true)) {
+                return $type;
+            }
+        }
+
+        return 'product';
+    }
+
+    /**
+     * Label berdasarkan jenis listing.
+     */
+    private static function listingLabel(): string
+    {
+        return match (self::listingType()) {
+            'service' => 'Jasa',
+            'other' => 'Lainnya',
+            default => 'Produk',
+        };
+    }
+
+    /**
+     * Mengambil kategori dari slug URL.
+     */
+    private static function selectedCategoryId(): ?int
+    {
+        $slug = request()->query('category');
+
+        if (! $slug) {
+            return null;
+        }
+
+        $id = Category::query()
+            ->where('slug', $slug)
+            ->where('listing_type', self::listingType())
+            ->where('is_active', true)
+            ->value('id');
+
+        return $id ? (int) $id : null;
+    }
+
+    /**
+     * Mengambil subkategori dari slug URL.
+     */
+    private static function selectedSubCategoryId(): ?int
+    {
+        $slug = request()->query('subcategory');
+        $categoryId = self::selectedCategoryId();
+
+        if (! $slug || ! $categoryId) {
+            return null;
+        }
+
+        $id = SubCategory::query()
+            ->where('slug', $slug)
+            ->where('category_id', $categoryId)
+            ->where('is_active', true)
+            ->value('id');
+
+        return $id ? (int) $id : null;
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
 
             /*
             |--------------------------------------------------------------------------
-            | INFORMASI PRODUK
+            | INFORMASI LISTING
             |--------------------------------------------------------------------------
             */
 
-            Section::make('Informasi Produk')
+            Section::make(fn () => 'Informasi ' . self::listingLabel())
                 ->schema([
 
                     TextInput::make('title')
-                        ->label('Nama Produk / Listing')
+                        ->label(fn () => 'Nama ' . self::listingLabel())
                         ->required()
                         ->maxLength(255)
                         ->live(onBlur: true)
@@ -73,54 +156,184 @@ class ProductForm
                 ->schema([
 
                     Select::make('category_id')
-                        ->label('Kategori')
+    ->label('Kategori')
+    ->options(function (Get $get) {
+        $categoryId = $get('category_id');
+
+        // Jika kategori sudah ditentukan, tampilkan kategori tersebut saja.
+        if ($categoryId) {
+            return Category::whereKey($categoryId)
+                ->pluck('name', 'id')
+                ->toArray();
+        }
+
+        // Jika belum ditentukan, tampilkan kategori sesuai jenis listing.
+        return Category::query()
+            ->where('listing_type', self::listingType())
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
+    })
+    ->default(fn () => self::selectedCategoryId())
+    ->disabled(function (string $operation) {
+        // Kategori terkunci saat edit.
+        if ($operation === 'edit') {
+            return true;
+        }
+
+        // Kategori terkunci saat tambah dari kategori sidebar.
+        return self::selectedCategoryId() !== null;
+    })
+    ->dehydrated()
+    ->searchable()
+    ->required()
+    ->live()
+    ->afterStateUpdated(function (Set $set) {
+        $set('sub_category_id', null);
+        $set('attribute_values', []);
+    }),
+                    Select::make('sub_category_id')
+    ->label('Subkategori')
+    ->options(function (Get $get) {
+        $categoryId = $get('category_id');
+
+        if (! $categoryId) {
+            return [];
+        }
+
+        return SubCategory::query()
+            ->where('category_id', $categoryId)
+            ->where('is_active', true)
+            ->orderBy('sort')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
+    })
+    ->default(fn () => self::selectedSubCategoryId())
+    ->searchable()
+    ->required()
+    ->live()
+    ->afterStateUpdated(
+        fn (Set $set) => $set('attribute_values', [])
+    ),
+                ])
+                ->columns(2),
+
+            /*
+            |--------------------------------------------------------------------------
+            | LOKASI LISTING
+            |--------------------------------------------------------------------------
+            */
+
+            Section::make(fn () => 'Lokasi ' . self::listingLabel())
+                ->description('Tentukan lokasi barang atau jasa yang ditawarkan.')
+                ->schema([
+
+                    Select::make('province_code')
+                        ->label('Provinsi')
                         ->options(
-                            fn () => Category::orderBy('name')
-                                ->pluck('name', 'id')
+                            fn () => Province::orderBy('name')
+                                ->pluck('name', 'code')
                         )
                         ->searchable()
                         ->required()
                         ->live()
                         ->afterStateUpdated(function (Set $set) {
-                            $set('sub_category_id', null);
-                            $set('attribute_values', []);
+                            $set('regency_code', null);
+                            $set('district_code', null);
+                            $set('village_code', null);
                         }),
 
-                    Select::make('sub_category_id')
-                        ->label('Subkategori')
-                        ->options(function (Get $get) {
-
-                            $categoryId = $get('category_id');
-
-                            if (! $categoryId) {
-                                return [];
-                            }
-
-                            return SubCategory::where(
-                                'category_id',
-                                $categoryId
+                    Select::make('regency_code')
+                        ->label('Kabupaten / Kota')
+                        ->options(fn (Get $get) => $get('province_code')
+                            ? Regency::where(
+                                'province_code',
+                                $get('province_code')
                             )
                                 ->orderBy('name')
-                                ->pluck('name', 'id');
-
-                        })
+                                ->pluck('name', 'code')
+                            : []
+                        )
                         ->searchable()
                         ->required()
                         ->live()
+                        ->disabled(fn (Get $get) => ! $get('province_code'))
+                        ->afterStateUpdated(function (Set $set) {
+                            $set('district_code', null);
+                            $set('village_code', null);
+                        }),
+
+                    Select::make('district_code')
+                        ->label('Kecamatan')
+                        ->options(fn (Get $get) => $get('regency_code')
+                            ? District::where(
+                                'regency_code',
+                                $get('regency_code')
+                            )
+                                ->orderBy('name')
+                                ->pluck('name', 'code')
+                            : []
+                        )
+                        ->searchable()
+                        ->required()
+                        ->live()
+                        ->disabled(fn (Get $get) => ! $get('regency_code'))
                         ->afterStateUpdated(
-                            fn (Set $set) => $set('attribute_values', [])
+                            fn (Set $set) => $set('village_code', null)
                         ),
+
+                    Select::make('village_code')
+                        ->label('Desa / Kelurahan')
+                        ->options(fn (Get $get) => $get('district_code')
+                            ? Village::where(
+                                'district_code',
+                                $get('district_code')
+                            )
+                                ->orderBy('name')
+                                ->pluck('name', 'code')
+                            : []
+                        )
+                        ->searchable()
+                        ->required()
+                        ->live()
+                        ->disabled(fn (Get $get) => ! $get('district_code'))
+                        ->afterStateUpdated(function ($state, Set $set) {
+
+                            $village = Village::where('code', $state)
+                                ->first();
+
+                            if ($village) {
+                                $set('latitude', $village->latitude);
+                                $set('longitude', $village->longitude);
+                            }
+
+                        }),
+
+                    Textarea::make('address_detail')
+                        ->label('Alamat Detail / Patokan')
+                        ->rows(3)
+                        ->columnSpanFull(),
+
+                    TextInput::make('latitude')
+                        ->label('Latitude')
+                        ->numeric(),
+
+                    TextInput::make('longitude')
+                        ->label('Longitude')
+                        ->numeric(),
 
                 ])
                 ->columns(2),
 
             /*
             |--------------------------------------------------------------------------
-            | SPESIFIKASI PRODUK
+            | SPESIFIKASI DINAMIS
             |--------------------------------------------------------------------------
             */
 
-            Section::make('Spesifikasi Produk')
+            Section::make(fn () => 'Spesifikasi ' . self::listingLabel())
                 ->description(
                     'Pertanyaan akan menyesuaikan kategori dan subkategori yang dipilih.'
                 )
@@ -174,57 +387,38 @@ class ProductForm
 
                             $field = match ($attribute->type) {
 
-                                /*
-                                | NUMBER
-                                */
-
+                                // NUMBER
                                 'number' => TextInput::make($name)
                                     ->label($label)
                                     ->numeric(),
 
-                                /*
-                                | TEXTAREA
-                                */
-
+                                // TEXTAREA
                                 'textarea' => Textarea::make($name)
                                     ->label($label)
                                     ->rows(3),
 
-                                /*
-                                | DATE
-                                */
-
+                                // DATE
                                 'date' => DatePicker::make($name)
                                     ->label($label),
 
-                                /*
-                                | SELECT
-                                */
-
+                                // SELECT
                                 'select' => Select::make($name)
                                     ->label($label)
                                     ->options($options)
                                     ->native()
                                     ->live(),
 
-                                /*
-                                | RADIO
-                                */
-
+                                // RADIO
                                 'radio' => Radio::make($name)
                                     ->label($label)
                                     ->options($options),
 
-                                /*
-                                | CHECKBOX
-                                */
-
+                                // CHECKBOX
                                 'checkbox' => CheckboxList::make($name)
                                     ->label($label)
                                     ->options($options)
                                     ->columns(2)
 
-                                    // DEBUG: kondisi saat form pertama dibuka
                                     ->afterStateHydrated(function (
                                         $state
                                     ) use ($name, $options) {
@@ -241,7 +435,6 @@ class ProductForm
 
                                     })
 
-                                    // DEBUG: kondisi setelah checkbox berubah
                                     ->afterStateUpdated(function (
                                         $state
                                     ) use ($name, $options) {
@@ -258,10 +451,7 @@ class ProductForm
 
                                     }),
 
-                                /*
-                                | DEFAULT TEXT INPUT
-                                */
-
+                                // DEFAULT TEXT INPUT
                                 default => TextInput::make($name)
                                     ->label($label),
 
@@ -272,7 +462,6 @@ class ProductForm
                                 : $field->nullable();
 
                         })
-
                         ->values()
                         ->all();
 

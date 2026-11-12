@@ -13,41 +13,129 @@ class CreateProduct extends CreateRecord
 
     protected array $attributeValues = [];
 
+    protected array $locationData = [];
+
+    public ?int $returnCategoryId = null;
+
+    public ?int $returnSubCategoryId = null;
+
+    public ?string $returnListingType = null;
+
+    /*
+    |--------------------------------------------------------------------------
+    | LABEL LISTING
+    |--------------------------------------------------------------------------
+    */
+
+    protected function getListingLabel(): string
+    {
+        return match ($this->returnListingType) {
+            'service' => 'Jasa',
+            'other' => 'Lainnya',
+            default => 'Produk',
+        };
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | JUDUL HALAMAN
+    |--------------------------------------------------------------------------
+    */
+
+    public function getTitle(): string
+    {
+        return 'Buat ' . $this->getListingLabel();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MOUNT FORM
+    |--------------------------------------------------------------------------
+    */
+
     public function mount(): void
     {
         parent::mount();
 
-        $categoryId = request()->query('category_id');
-        $subCategoryId = request()->query('sub_category_id');
+        $categorySlug = request()->query('category');
+        $subCategorySlug = request()->query('subcategory');
 
-        // Pastikan kategori benar-benar tersedia.
-        if (
-            $categoryId &&
-            Category::whereKey($categoryId)->exists()
-        ) {
-            $this->data['category_id'] = (int) $categoryId;
+        $category = $categorySlug
+            ? Category::query()
+                ->where('slug', $categorySlug)
+                ->where('is_active', true)
+                ->first()
+            : null;
 
-            // Pastikan subkategori termasuk kategori tersebut.
-            if (
-                $subCategoryId &&
-                SubCategory::where('id', $subCategoryId)
-                    ->where('category_id', $categoryId)
-                    ->exists()
-            ) {
-                $this->data['sub_category_id'] = (int) $subCategoryId;
+        if ($category) {
+            $this->returnCategoryId = (int) $category->id;
+
+            $this->returnListingType = $category->listing_type;
+
+            $this->data['category_id'] = $category->id;
+
+            $subCategory = $subCategorySlug
+                ? SubCategory::query()
+                    ->where('slug', $subCategorySlug)
+                    ->where('category_id', $category->id)
+                    ->where('is_active', true)
+                    ->first()
+                : null;
+
+            if ($subCategory) {
+                $this->returnSubCategoryId = (int) $subCategory->id;
+
+                $this->data['sub_category_id'] = $subCategory->id;
             }
+        } else {
+            $type = request()->query('listingType');
 
-            // Isi ulang form dengan data yang sudah ditentukan.
-            $this->form->fill($this->data);
+            $this->returnListingType = in_array(
+                $type,
+                ['product', 'service', 'other'],
+                true
+            ) ? $type : 'product';
         }
+
+        $this->form->fill($this->data);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PERSIAPAN DATA SEBELUM CREATE
+    |--------------------------------------------------------------------------
+    */
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // Simpan atribut sementara.
         $this->attributeValues = $data['attribute_values'] ?? [];
 
         unset($data['attribute_values']);
 
+        // Ambil data lokasi.
+        $this->locationData = [
+            'province_code' => $data['province_code'] ?? null,
+            'regency_code' => $data['regency_code'] ?? null,
+            'district_code' => $data['district_code'] ?? null,
+            'village_code' => $data['village_code'] ?? null,
+            'address_detail' => $data['address_detail'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+        ];
+
+        // Lokasi tidak disimpan di tabel products.
+        unset(
+            $data['province_code'],
+            $data['regency_code'],
+            $data['district_code'],
+            $data['village_code'],
+            $data['address_detail'],
+            $data['latitude'],
+            $data['longitude']
+        );
+
+        // Pastikan user terisi.
         if (empty($data['user_id'])) {
             $data['user_id'] = auth()->id();
         }
@@ -58,10 +146,22 @@ class CreateProduct extends CreateRecord
         return $data;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | SIMPAN ATRIBUT DAN LOKASI SETELAH CREATE
+    |--------------------------------------------------------------------------
+    */
+
     protected function afterCreate(): void
     {
+        // Simpan atribut listing.
         foreach ($this->attributeValues as $attributeId => $value) {
-            if ($value === null || $value === '') {
+
+            if (
+                $value === null ||
+                $value === '' ||
+                $value === []
+            ) {
                 continue;
             }
 
@@ -72,15 +172,61 @@ class CreateProduct extends CreateRecord
                     : (string) $value,
             ]);
         }
+
+        // Simpan lokasi listing.
+        if (! empty($this->locationData['province_code'])) {
+            $this->record->location()->create($this->locationData);
+        }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | NOTIFIKASI
+    |--------------------------------------------------------------------------
+    */
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return 'Listing berhasil disimpan sebagai Draft';
+        return $this->getListingLabel() . ' berhasil disimpan sebagai Draft';
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | REDIRECT SETELAH CREATE
+    |--------------------------------------------------------------------------
+    */
 
     protected function getRedirectUrl(): string
     {
-        return route('filament.admin.pages.listing-manager');
+        $categoryId = $this->returnCategoryId
+            ?? $this->record->category_id;
+
+        $subCategoryId = $this->returnCategoryId !== null
+            ? $this->returnSubCategoryId
+            : $this->record->sub_category_id;
+
+        $categorySlug = $categoryId
+            ? Category::whereKey($categoryId)->value('slug')
+            : null;
+
+        $subCategorySlug = $subCategoryId
+            ? SubCategory::whereKey($subCategoryId)->value('slug')
+            : null;
+
+        $listingType = $this->returnListingType;
+
+        if (! $listingType && $categoryId) {
+            $listingType = Category::whereKey($categoryId)
+                ->value('listing_type');
+        }
+
+        return route(
+            'filament.admin.pages.listing-manager',
+            array_filter([
+                'category' => $categorySlug,
+                'subcategory' => $subCategorySlug,
+                'listingType' => $listingType,
+            ], fn ($value) => $value !== null && $value !== '')
+        );
     }
 }

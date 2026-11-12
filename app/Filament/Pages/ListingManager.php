@@ -27,14 +27,23 @@ class ListingManager extends Page
 
     protected string $view = 'filament.pages.listing-manager';
 
-    // FILTER
+    /*
+    |--------------------------------------------------------------------------
+    | FILTER
+    |--------------------------------------------------------------------------
+    */
+
     #[Url]
     public ?string $listingType = null;
 
-    #[Url]
+    #[Url(as: 'category')]
+    public ?string $categorySlug = null;
+
+    #[Url(as: 'subcategory')]
+    public ?string $subCategorySlug = null;
+
     public ?int $categoryId = null;
 
-    #[Url]
     public ?int $subCategoryId = null;
 
     #[Url]
@@ -46,18 +55,91 @@ class ListingManager extends Page
     #[Url]
     public string $publication = '';
 
-    // PAGINATION
+    /*
+    |--------------------------------------------------------------------------
+    | PAGINATION
+    |--------------------------------------------------------------------------
+    */
+
     public string $perPage = '50';
 
-    // SORTING
+    /*
+    |--------------------------------------------------------------------------
+    | SORTING
+    |--------------------------------------------------------------------------
+    */
+
     public string $sortField = 'created_at';
 
     public string $sortDirection = 'desc';
 
-    // MODAL INFORMASI
+    /*
+    |--------------------------------------------------------------------------
+    | MODAL INFORMASI
+    |--------------------------------------------------------------------------
+    */
+
     public ?string $selectedListingPublicId = null;
 
     public ?string $activeInfo = null;
+
+    /*
+    |--------------------------------------------------------------------------
+    | HAPUS LISTING
+    |--------------------------------------------------------------------------
+    */
+
+    public function deleteListing(string $publicId): void
+    {
+        $product = Product::where('public_id', $publicId)->firstOrFail();
+
+        $message = match ($product->listing_type) {
+            'product' => 'Produk berhasil dihapus.',
+            'service' => 'Jasa berhasil dihapus.',
+            'other' => 'Listing berhasil dihapus.',
+            default => 'Listing berhasil dihapus.',
+        };
+
+        $product->delete();
+
+        $this->resetPage();
+
+        session()->flash('success', $message);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MOUNT DAN RESOLUSI SLUG
+    |--------------------------------------------------------------------------
+    */
+
+    public function mount(): void
+    {
+        // Resolusi slug kategori menjadi ID internal
+        if ($this->categorySlug) {
+            $this->categoryId = Category::where(
+                'slug',
+                $this->categorySlug
+            )->value('id');
+        }
+
+        // Resolusi slug subkategori menjadi ID internal
+        if ($this->subCategorySlug) {
+            $subcategory = SubCategory::where(
+                'slug',
+                $this->subCategorySlug
+            )->first();
+
+            if (
+                $subcategory &&
+                (int) $subcategory->category_id === (int) $this->categoryId
+            ) {
+                $this->subCategoryId = $subcategory->id;
+            } else {
+                $this->subCategorySlug = null;
+            }
+        }
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -118,9 +200,12 @@ class ListingManager extends Page
 
                     $query->where(function (Builder $q) use ($search) {
                         $q->where('title', 'like', $search)
-                            ->orWhereHas('user', function (Builder $user) use ($search) {
-                                $user->where('name', 'like', $search);
-                            });
+                            ->orWhereHas(
+                                'user',
+                                function (Builder $user) use ($search) {
+                                    $user->where('name', 'like', $search);
+                                }
+                            );
                     });
                 }
             );
@@ -171,28 +256,43 @@ class ListingManager extends Page
     }
 
     public function getSubCategories()
-{
-    return SubCategory::query()
-        ->when(
-            $this->categoryId,
-            fn (Builder $query) => $query->where(
-                'category_id',
-                $this->categoryId
+    {
+        return SubCategory::query()
+            ->when(
+                $this->categoryId,
+                fn (Builder $query) => $query->where(
+                    'category_id',
+                    $this->categoryId
+                )
             )
-        )
-        ->orderBy('name')
-        ->get();
-}
+            ->orderBy('name')
+            ->get();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE FILTER KATEGORI
+    |--------------------------------------------------------------------------
+    */
 
     public function updatedCategoryId(): void
     {
+        $this->categorySlug = $this->categoryId
+            ? Category::whereKey($this->categoryId)->value('slug')
+            : null;
+
         $this->subCategoryId = null;
+        $this->subCategorySlug = null;
 
         $this->resetPage();
     }
 
     public function updatedSubCategoryId(): void
     {
+        $this->subCategorySlug = $this->subCategoryId
+            ? SubCategory::whereKey($this->subCategoryId)->value('slug')
+            : null;
+
         $this->resetPage();
     }
 
@@ -201,8 +301,17 @@ class ListingManager extends Page
         $this->categoryId = null;
         $this->subCategoryId = null;
 
+        $this->categorySlug = null;
+        $this->subCategorySlug = null;
+
         $this->resetPage();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE FILTER STATUS
+    |--------------------------------------------------------------------------
+    */
 
     public function updatedStatus(): void
     {
@@ -221,7 +330,7 @@ class ListingManager extends Page
 
     /*
     |--------------------------------------------------------------------------
-    | PAGINATION
+    | UPDATE PAGINATION
     |--------------------------------------------------------------------------
     */
 
@@ -282,7 +391,10 @@ class ListingManager extends Page
             case 'category':
                 $query->orderBy(
                     Category::select('name')
-                        ->whereColumn('categories.id', 'products.category_id'),
+                        ->whereColumn(
+                            'categories.id',
+                            'products.category_id'
+                        ),
                     $direction
                 );
                 break;
@@ -290,7 +402,10 @@ class ListingManager extends Page
             case 'subcategory':
                 $query->orderBy(
                     SubCategory::select('name')
-                        ->whereColumn('sub_categories.id', 'products.sub_category_id'),
+                        ->whereColumn(
+                            'sub_categories.id',
+                            'products.sub_category_id'
+                        ),
                     $direction
                 );
                 break;
@@ -298,7 +413,10 @@ class ListingManager extends Page
             case 'seller':
                 $query->orderBy(
                     \App\Models\User::select('name')
-                        ->whereColumn('users.id', 'products.user_id'),
+                        ->whereColumn(
+                            'users.id',
+                            'products.user_id'
+                        ),
                     $direction
                 );
                 break;

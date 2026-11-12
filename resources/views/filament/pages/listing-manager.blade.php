@@ -4,6 +4,15 @@
         $listings = $this->getListings();
         $attributes = $this->getDynamicAttributes();
 
+        $listingLabel = match ($this->listingType) {
+            'product' => 'Produk',
+            'service' => 'Jasa',
+            'other' => 'Lainnya',
+            default => 'Listing',
+        };
+
+        $listingLabelLower = mb_strtolower($listingLabel);
+
         $cards = [
             ['key' => 'total', 'label' => 'Total Listing', 'icon' => '▦', 'color' => 'blue'],
             ['key' => 'published', 'label' => 'Published', 'icon' => '✓', 'color' => 'green'],
@@ -576,6 +585,18 @@
     </style>
 
     <div class="fjb-dashboard">
+        @if (session()->has('success'))
+    <div style="
+        padding:12px 16px;
+        margin-bottom:15px;
+        background:#dcfce7;
+        color:#166534;
+        border-radius:9px;
+        font-weight:600;
+    ">
+        {{ session('success') }}
+    </div>
+@endif
 
         {{-- HEADER --}}
         <section class="fjb-hero">
@@ -605,7 +626,7 @@
     <div>
         <h3 class="fjb-panel-title">Manajemen Listing</h3>
         <div class="fjb-panel-subtitle">
-            Data iklan dan produk yang terdaftar di marketplace
+            Data iklan dan {{ $listingLabelLower }} yang terdaftar di marketplace
         </div>
     </div>
 
@@ -615,11 +636,12 @@
         </span>
 
         <a href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('create', array_filter([
-    'category_id' => $this->categoryId,
-    'sub_category_id' => $this->subCategoryId,
+    'category' => $this->categorySlug,
+    'subcategory' => $this->subCategorySlug,
+    'listingType' => $this->listingType,
 ])) }}"
    style="background:#2563eb;color:white;padding:10px 15px;border-radius:9px;font-size:12px;font-weight:700;text-decoration:none;">
-    + Tambah Produk
+    + Tambah {{ $listingLabel }}
 </a>
     </div>
 </div>
@@ -630,7 +652,7 @@
                     <input
                         type="search"
                         wire:model.live.debounce.400ms="search"
-                        placeholder="Cari nama produk atau penjual..."
+                        placeholder="Cari nama {{ $listingLabelLower }} atau penjual..."
                     >
                 </div>
 
@@ -671,7 +693,7 @@
                         <tr>
                             <th>
                                 <button type="button" class="fjb-sort-button" wire:click="sortBy('title')">
-                                    Produk / Listing
+                                    {{ $listingLabel }} / Listing
                                     {{ $sortField === 'title' ? ($sortDirection === 'asc' ? '↑' : '↓') : '↕' }}
                                 </button>
                             </th>
@@ -729,12 +751,25 @@
                                         </div>
 
                                         <div>
-                                            <a href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', ['record' => $listing->public_id]) }}"
+                                            <a href="{{ \App\Filament\Resources\Products\ProductResource::getUrl('edit', array_filter([
+    'record' => $listing->public_id,
+    'category' => $this->categorySlug,
+    'subcategory' => $this->subCategorySlug,
+    'listingType' => $this->listingType,
+], fn ($value) => $value !== null && $value !== '')) }}"
    class="fjb-product-name"
    style="display:block;text-decoration:none;color:#2563eb;cursor:pointer;">
     {{ $listing->title }}
+                                            </a>
 
-                                            <div class="fjb-product-type">{{ ucfirst($listing->listing_type) }}</div>
+                                            <div class="fjb-product-type">
+                                                {{ match ($listing->listing_type) {
+                                                    'product' => 'Produk',
+                                                    'service' => 'Jasa',
+                                                    'other' => 'Lainnya',
+                                                    default => 'Listing',
+                                                } }}
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
@@ -757,7 +792,6 @@
                                 </td>
 
                                 <td>{{ $listing->created_at?->format('d M Y') ?? '-' }}</td>
-</a>
                                 <td>
                                     <div class="fjb-info-buttons">
                                         @if ($listing->sub_category_id)
@@ -797,7 +831,19 @@
                                         @endif
 
                                         <button type="button" class="fjb-info-button" style="background:#1e293b"
-                                            wire:click="openInfo('{{ $listing->public_id }}', 'complete')">Detail Lengkap</button>
+    wire:click="openInfo('{{ $listing->public_id }}', 'complete')">
+    Detail Lengkap
+</button>
+
+<button
+    type="button"
+    class="fjb-info-button"
+    style="background:#dc2626"
+    wire:click="deleteListing('{{ $listing->public_id }}')"
+    wire:confirm="Yakin ingin menghapus {{ $listingLabelLower }} {{ $listing->title }}?"
+>
+    Hapus
+</button>
                                     </div>
                                 </td>
                             </tr>
@@ -908,7 +954,12 @@
                         <div class="fjb-info-grid">
                             <div class="fjb-info-item"><span class="fjb-info-label">Kategori</span><div class="fjb-info-value">{{ $selected->category?->name ?? '-' }}</div></div>
                             <div class="fjb-info-item"><span class="fjb-info-label">Subkategori</span><div class="fjb-info-value">{{ $selected->subCategory?->name ?? '-' }}</div></div>
-                            <div class="fjb-info-item"><span class="fjb-info-label">Jenis Listing</span><div class="fjb-info-value">{{ ucfirst($selected->listing_type ?? '-') }}</div></div>
+                            <div class="fjb-info-item"><span class="fjb-info-label">Jenis Listing</span><div class="fjb-info-value">{{ match ($selected->listing_type) {
+                                    'product' => 'Produk',
+                                    'service' => 'Jasa',
+                                    'other' => 'Lainnya',
+                                    default => '-',
+                                } }}</div></div>
                         </div>
 
                     @elseif ($activeInfo === 'service')
@@ -940,7 +991,12 @@
                     @else
                         <h3 style="font-size:16px;font-weight:800;margin-bottom:12px;">{{ $selected->title }}</h3>
                         <div class="fjb-info-grid">
-                            <div class="fjb-info-item"><span class="fjb-info-label">Jenis Listing</span><div class="fjb-info-value">{{ ucfirst($selected->listing_type ?? '-') }}</div></div>
+                            <div class="fjb-info-item"><span class="fjb-info-label">Jenis Listing</span><div class="fjb-info-value">{{ match ($selected->listing_type) {
+                                    'product' => 'Produk',
+                                    'service' => 'Jasa',
+                                    'other' => 'Lainnya',
+                                    default => '-',
+                                } }}</div></div>
                             <div class="fjb-info-item"><span class="fjb-info-label">Harga</span><div class="fjb-info-value">{{ $selected->price !== null ? 'Rp '.number_format($selected->price, 0, ',', '.') : '-' }}</div></div>
                             <div class="fjb-info-item"><span class="fjb-info-label">Kategori</span><div class="fjb-info-value">{{ $selected->category?->name ?? '-' }}</div></div>
                             <div class="fjb-info-item"><span class="fjb-info-label">Subkategori</span><div class="fjb-info-value">{{ $selected->subCategory?->name ?? '-' }}</div></div>

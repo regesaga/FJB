@@ -5,12 +5,37 @@ namespace App\Filament\Resources\Products\Pages;
 use App\Filament\Resources\Products\ProductResource;
 use App\Models\SubCategoryAttribute;
 use Filament\Resources\Pages\EditRecord;
-
+use Livewire\Attributes\Url;
+use App\Models\Category;
+use App\Models\SubCategory;
 class EditProduct extends EditRecord
 {
     protected static string $resource = ProductResource::class;
 
     protected array $attributeValues = [];
+
+    protected array $locationData = [];
+
+    /*
+    |--------------------------------------------------------------------------
+    | FILTER YANG DIBAWA DARI MANAJEMEN LISTING
+    |--------------------------------------------------------------------------
+    */
+
+   #[Url(as: 'category')]
+public ?string $categorySlug = null;
+
+#[Url(as: 'subcategory')]
+public ?string $subCategorySlug = null;
+
+#[Url]
+public ?string $listingType = null;
+
+    /*
+    |--------------------------------------------------------------------------
+    | HEADER ACTIONS
+    |--------------------------------------------------------------------------
+    */
 
     protected function getHeaderActions(): array
     {
@@ -19,7 +44,7 @@ class EditProduct extends EditRecord
 
     /*
     |--------------------------------------------------------------------------
-    | LOAD DATA ATRIBUT SAAT EDIT
+    | LOAD DATA ATRIBUT DAN LOKASI SAAT EDIT
     |--------------------------------------------------------------------------
     */
 
@@ -27,7 +52,7 @@ class EditProduct extends EditRecord
     {
         $values = [];
 
-        // Muat atribut beserta pilihan yang tersedia.
+        // Muat atribut beserta pilihan.
         $this->record->load('attributeValues.attribute.options');
 
         foreach ($this->record->attributeValues as $item) {
@@ -36,25 +61,21 @@ class EditProduct extends EditRecord
 
             if ($item->attribute?->type === 'checkbox') {
 
-                // Ambil nilai JSON dari database.
                 $decoded = is_array($value)
                     ? $value
                     : json_decode((string) $value, true);
 
-                // Ambil pilihan checkbox yang valid.
                 $allowedOptions = $item->attribute->options
                     ->pluck('value')
                     ->map(fn ($option) => (string) $option)
                     ->all();
 
-                // Tangani data lama yang hanya menyimpan satu nilai.
                 if (! is_array($decoded)) {
                     $decoded = is_scalar($decoded)
                         ? [$decoded]
                         : [];
                 }
 
-                // Buang nilai yang tidak tersedia dalam opsi.
                 $value = array_values(
                     array_filter(
                         $decoded,
@@ -74,6 +95,25 @@ class EditProduct extends EditRecord
 
         $data['attribute_values'] = $values;
 
+        /*
+        |--------------------------------------------------------------------------
+        | LOAD LOKASI PRODUK
+        |--------------------------------------------------------------------------
+        */
+
+        $location = $this->record->location;
+
+        if ($location) {
+
+            $data['province_code'] = $location->province_code;
+            $data['regency_code'] = $location->regency_code;
+            $data['district_code'] = $location->district_code;
+            $data['village_code'] = $location->village_code;
+            $data['address_detail'] = $location->address_detail;
+            $data['latitude'] = $location->latitude;
+            $data['longitude'] = $location->longitude;
+        }
+
         return $data;
     }
 
@@ -85,16 +125,44 @@ class EditProduct extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Simpan atribut sementara.
         $this->attributeValues = $data['attribute_values'] ?? [];
 
         unset($data['attribute_values']);
 
-        // Pastikan penjual terisi.
+        /*
+        |--------------------------------------------------------------------------
+        | AMBIL DATA LOKASI
+        |--------------------------------------------------------------------------
+        */
+
+        $this->locationData = [
+            'province_code' => $data['province_code'] ?? null,
+            'regency_code' => $data['regency_code'] ?? null,
+            'district_code' => $data['district_code'] ?? null,
+            'village_code' => $data['village_code'] ?? null,
+            'address_detail' => $data['address_detail'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+        ];
+
+        // Hapus field lokasi dari data utama produk.
+        unset(
+            $data['province_code'],
+            $data['regency_code'],
+            $data['district_code'],
+            $data['village_code'],
+            $data['address_detail'],
+            $data['latitude'],
+            $data['longitude']
+        );
+
+        // Pastikan user tetap terisi.
         if (empty($data['user_id'])) {
             $data['user_id'] = $this->record->user_id;
         }
 
-        // Atur tanggal publikasi berdasarkan status.
+        // Atur tanggal publikasi.
         if (($data['status'] ?? 'draft') === 'published') {
 
             $data['published_at'] =
@@ -103,7 +171,6 @@ class EditProduct extends EditRecord
         } else {
 
             $data['published_at'] = null;
-
         }
 
         return $data;
@@ -111,12 +178,18 @@ class EditProduct extends EditRecord
 
     /*
     |--------------------------------------------------------------------------
-    | SIMPAN PERUBAHAN ATRIBUT
+    | SIMPAN ATRIBUT DAN LOKASI SETELAH UPDATE
     |--------------------------------------------------------------------------
     */
 
     protected function afterSave(): void
     {
+        /*
+        |--------------------------------------------------------------------------
+        | SIMPAN ATRIBUT PRODUK
+        |--------------------------------------------------------------------------
+        */
+
         $mappedAttributes = SubCategoryAttribute::query()
             ->where('sub_category_id', $this->record->sub_category_id)
             ->where('visible', true)
@@ -150,6 +223,22 @@ class EditProduct extends EditRecord
                 ]
             );
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | SIMPAN / UPDATE LOKASI
+        |--------------------------------------------------------------------------
+        */
+
+        if (! empty($this->locationData['province_code'])) {
+
+            $this->record->location()->updateOrCreate(
+                [
+                    'product_id' => $this->record->id,
+                ],
+                $this->locationData
+            );
+        }
     }
 
     /*
@@ -165,12 +254,33 @@ class EditProduct extends EditRecord
 
     /*
     |--------------------------------------------------------------------------
-    | REDIRECT SETELAH UPDATE
+    | REDIRECT SETELAH EDIT
     |--------------------------------------------------------------------------
     */
 
     protected function getRedirectUrl(): string
-    {
-        return route('filament.admin.pages.listing-manager');
-    }
+{
+    // Prioritaskan filter dari halaman sebelumnya.
+    // Jika tidak ada, gunakan kategori listing yang sedang diedit.
+    $categorySlug = $this->categorySlug
+        ?: Category::whereKey($this->record->category_id)
+            ->value('slug');
+
+    $subCategorySlug = $this->subCategorySlug
+        ?: SubCategory::whereKey($this->record->sub_category_id)
+            ->value('slug');
+
+    $listingType = $this->listingType
+        ?: Category::whereKey($this->record->category_id)
+            ->value('listing_type');
+
+    return route(
+        'filament.admin.pages.listing-manager',
+        array_filter([
+            'category' => $categorySlug,
+            'subcategory' => $subCategorySlug,
+            'listingType' => $listingType,
+        ], fn ($value) => $value !== null && $value !== '')
+    );
+}
 }

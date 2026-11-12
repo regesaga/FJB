@@ -4,14 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
     public function getRouteKeyName(): string
-{
-    return 'public_id';
-}
+    {
+        return 'public_id';
+    }
 
     protected $fillable = [
         'user_id',
@@ -27,22 +30,22 @@ class Product extends Model
         'status',
         'views',
         'published_at',
-
-        // Informasi listing
         'listing_type',
         'availability_status',
         'stock_quantity',
         'availability_confirmed_at',
         'availability_expires_at',
     ];
-protected static function booted(): void
-{
-    static::creating(function (Product $product): void {
-        if (empty($product->public_id)) {
-            $product->public_id = (string) Str::uuid();
-        }
-    });
-}
+
+    protected static function booted(): void
+    {
+        static::creating(function (Product $product): void {
+            if (empty($product->public_id)) {
+                $product->public_id = (string) Str::uuid();
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
@@ -52,6 +55,7 @@ protected static function booted(): void
             'published_at' => 'datetime',
             'availability_confirmed_at' => 'datetime',
             'availability_expires_at' => 'datetime',
+            'deleted_at' => 'datetime',
         ];
     }
 
@@ -96,7 +100,6 @@ protected static function booted(): void
         return $this->hasMany(ProductAttributeValue::class);
     }
 
-    // Relasi khusus jasa
     public function serviceDetail()
     {
         return $this->hasOne(ServiceDetail::class);

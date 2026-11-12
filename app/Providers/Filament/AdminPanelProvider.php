@@ -60,19 +60,21 @@ class AdminPanelProvider extends PanelProvider
                 continue;
             }
 
+            // URL kategori menggunakan slug
             $categoryUrl = '/admin/listing-manager?' . http_build_query([
                 'listingType' => $category->listing_type,
-                'categoryId' => $category->id,
+                'category' => $category->slug,
             ]);
 
             $childItems = [];
 
+            // URL subkategori juga menggunakan slug
             foreach ($category->subCategories as $subCategory) {
                 $childItems[] = NavigationItem::make($subCategory->name)
                     ->url('/admin/listing-manager?' . http_build_query([
                         'listingType' => $category->listing_type,
-                        'categoryId' => $category->id,
-                        'subCategoryId' => $subCategory->id,
+                        'category' => $category->slug,
+                        'subcategory' => $subCategory->slug,
                     ]))
                     ->sort($subCategory->sort);
             }
